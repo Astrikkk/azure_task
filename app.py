@@ -1,10 +1,10 @@
 from flask import Flask, send_from_directory
 import os
 
-app = Flask(__name__, static_folder='.’)
-@app.route('/’)
+app = Flask(__name__, static_folder='.')
+@app.route('/')
 def index():
-    return send_from_directory('.', 'index.html’)
+    return send_from_directory('.', 'index.html')
 
-if __name__ == '__main__’:
+if __name__ == '__main__':
     app.run()
