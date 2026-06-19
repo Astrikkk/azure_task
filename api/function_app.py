@@ -3,20 +3,20 @@ import logging
 import math
 import json
 
-app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.route(route="CalculateArea", methods=['GET', 'POST', 'OPTIONS'])
 def CalculateArea(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
 
-    # Handle CORS preflight request (OPTIONS)
+    # Handle CORS preflight request
     if req.method == 'OPTIONS':
         return func.HttpResponse(
             status_code=204,
             headers={
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, x-functions-key, Authorization',
+                'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400'
             }
         )
@@ -132,9 +132,9 @@ def CalculateArea(req: func.HttpRequest) -> func.HttpResponse:
                 status_code=500
             )
 
-    # Add CORS headers to ALL responses
+    # Add CORS headers to all responses
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, x-functions-key, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     
     return response

@@ -178,13 +178,8 @@
     </div>
 
     <script>
-        // 🔧 IMPORTANT: Replace this with your actual Azure Function URL
-// Make sure to include https:// and the full route path
+// No function key needed anymore!
 const FUNCTION_URL = 'https://azuretask-ewf8bja5eueqd5bx.swedencentral-01.azurewebsites.net/api/CalculateArea';
-
-// If your function requires authentication, add the function key:
-// const FUNCTION_KEY = 'your-function-key-here';
-// Then include it in the headers or as a query parameter
 
 const shapeSelect = document.getElementById('shape');
 const dimensionsDiv = document.getElementById('dimensions');
@@ -212,7 +207,6 @@ const shapeFields = {
 shapeSelect.addEventListener('change', function() {
     const shape = this.value;
     
-    // Hide all input groups
     Object.values(inputs).forEach(input => {
         input.closest('.form-group').classList.add('hidden');
         input.required = false;
@@ -222,7 +216,6 @@ shapeSelect.addEventListener('change', function() {
         dimensionsDiv.classList.remove('hidden');
         calculateBtn.disabled = false;
         
-        // Show relevant fields
         shapeFields[shape].forEach(field => {
             inputs[field].closest('.form-group').classList.remove('hidden');
             inputs[field].required = true;
@@ -241,22 +234,20 @@ form.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const shape = shapeSelect.value;
-    const data = { shape: shape };
+    const data = { shape };
 
-    // Collect input values
+    let hasError = false;
     shapeFields[shape].forEach(field => {
         const value = parseFloat(inputs[field].value);
         if (isNaN(value) || value < 0) {
             showResult('error', `Please enter a valid positive number for ${field}`);
+            hasError = true;
             return;
         }
         data[field] = value;
     });
 
-    // Validate that we have all required data
-    if (Object.keys(data).length <= 1) {
-        return;
-    }
+    if (hasError) return;
 
     calculateBtn.disabled = true;
     calculateBtn.textContent = 'Calculating...';
@@ -270,32 +261,31 @@ form.addEventListener('submit', async function(e) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-                // If using function key authentication:
-                // 'x-functions-key': FUNCTION_KEY
             },
             body: JSON.stringify(data)
         });
 
         console.log('Response status:', response.status);
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText || 'Request failed'}`);
+        }
+
         const result = await response.json();
         console.log('Response data:', result);
 
-        if (response.ok) {
-            showResult('success', `
-                <h3>✅ Calculation Complete</h3>
-                <p><strong>Shape:</strong> ${result.shape}</p>
-                <p><strong>Area:</strong> ${result.area} square units</p>
-            `);
-        } else {
-            throw new Error(result.error || result.message || 'Calculation failed');
-        }
+        showResult('success', `
+            <h3>✅ Calculation Complete</h3>
+            <p><strong>Shape:</strong> ${result.shape}</p>
+            <p><strong>Area:</strong> ${result.area} square units</p>
+        `);
+        
     } catch (error) {
         console.error('Error:', error);
         showResult('error', `
             <h3>❌ Error</h3>
             <p>${error.message}</p>
-            <p><small>Check console for more details</small></p>
         `);
     } finally {
         calculateBtn.disabled = false;
