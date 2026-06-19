@@ -241,7 +241,7 @@ form.addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const shape = shapeSelect.value;
-    const data = { shape };
+    const data = { shape: shape };
 
     // Collect input values
     shapeFields[shape].forEach(field => {
