@@ -1,7 +1,284 @@
-In a web deployment, Flask is the
-application framework that contains your
-Python logic and routes, while Gunicorn is
-the production-grade WSGI HTTP server
-that sits in front of it to handle multiple
-concurrent requests and manage the
-application process efficiently.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Area Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #c3e6cb;
+            color: #155724;
+            display: block;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            display: block;
+        }
+
+        .result h3 {
+            margin-bottom: 10px;
+        }
+
+        .result p {
+            margin: 5px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📐 Area Calculator</h1>
+        
+        <form id="areaForm">
+            <div class="form-group">
+                <label for="shape">Select Shape</label>
+                <select id="shape" required>
+                    <option value="">Choose a shape...</option>
+                    <option value="circle">Circle</option>
+                    <option value="rectangle">Rectangle</option>
+                    <option value="triangle">Triangle</option>
+                    <option value="square">Square</option>
+                </select>
+            </div>
+
+            <div id="dimensions" class="hidden">
+                <div class="form-group">
+                    <label for="radius">Radius</label>
+                    <input type="number" id="radius" step="0.01" min="0" placeholder="Enter radius">
+                </div>
+
+                <div class="form-group hidden">
+                    <label for="length">Length</label>
+                    <input type="number" id="length" step="0.01" min="0" placeholder="Enter length">
+                </div>
+
+                <div class="form-group hidden">
+                    <label for="width">Width</label>
+                    <input type="number" id="width" step="0.01" min="0" placeholder="Enter width">
+                </div>
+
+                <div class="form-group hidden">
+                    <label for="base">Base</label>
+                    <input type="number" id="base" step="0.01" min="0" placeholder="Enter base">
+                </div>
+
+                <div class="form-group hidden">
+                    <label for="height">Height</label>
+                    <input type="number" id="height" step="0.01" min="0" placeholder="Enter height">
+                </div>
+
+                <div class="form-group hidden">
+                    <label for="side">Side</label>
+                    <input type="number" id="side" step="0.01" min="0" placeholder="Enter side length">
+                </div>
+            </div>
+
+            <button type="submit" id="calculateBtn" disabled>Calculate Area</button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        // 🔧 IMPORTANT: Replace this with your actual Azure Function URL
+        const FUNCTION_URL = 'azuretask-ewf8bja5eueqd5bx.swedencentral-01.azurewebsites.net';
+
+        const shapeSelect = document.getElementById('shape');
+        const dimensionsDiv = document.getElementById('dimensions');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const form = document.getElementById('areaForm');
+        const resultDiv = document.getElementById('result');
+
+        const inputs = {
+            radius: document.getElementById('radius'),
+            length: document.getElementById('length'),
+            width: document.getElementById('width'),
+            base: document.getElementById('base'),
+            height: document.getElementById('height'),
+            side: document.getElementById('side')
+        };
+
+        const shapeFields = {
+            circle: ['radius'],
+            rectangle: ['length', 'width'],
+            triangle: ['base', 'height'],
+            square: ['side']
+        };
+
+        // Show/hide fields based on shape selection
+        shapeSelect.addEventListener('change', function() {
+            const shape = this.value;
+            
+            // Hide all input groups
+            Object.values(inputs).forEach(input => {
+                input.closest('.form-group').classList.add('hidden');
+                input.required = false;
+            });
+
+            if (shape) {
+                dimensionsDiv.classList.remove('hidden');
+                calculateBtn.disabled = false;
+                
+                // Show relevant fields
+                shapeFields[shape].forEach(field => {
+                    inputs[field].closest('.form-group').classList.remove('hidden');
+                    inputs[field].required = true;
+                });
+            } else {
+                dimensionsDiv.classList.add('hidden');
+                calculateBtn.disabled = true;
+            }
+
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '';
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const shape = shapeSelect.value;
+            const data = { shape };
+
+            // Collect input values
+            shapeFields[shape].forEach(field => {
+                data[field] = parseFloat(inputs[field].value);
+            });
+
+            calculateBtn.disabled = true;
+            calculateBtn.textContent = 'Calculating...';
+            resultDiv.className = 'result';
+
+            try {
+                const response = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Calculation Complete</h3>
+                        <p><strong>Shape:</strong> ${result.shape}</p>
+                        <p><strong>Area:</strong> ${result.area} square units</p>
+                    `;
+                } else {
+                    throw new Error(result.error || 'Calculation failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message}</p>
+                `;
+            } finally {
+                calculateBtn.disabled = false;
+                calculateBtn.textContent = 'Calculate Area';
+            }
+        });
+    </script>
+</body>
+</html>
