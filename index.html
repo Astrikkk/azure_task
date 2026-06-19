@@ -179,106 +179,134 @@
 
     <script>
         // 🔧 IMPORTANT: Replace this with your actual Azure Function URL
-        const FUNCTION_URL = 'azuretask-ewf8bja5eueqd5bx.swedencentral-01.azurewebsites.net';
+// Make sure to include https:// and the full route path
+const FUNCTION_URL = 'https://azuretask-ewf8bja5eueqd5bx.swedencentral-01.azurewebsites.net/api/CalculateArea';
 
-        const shapeSelect = document.getElementById('shape');
-        const dimensionsDiv = document.getElementById('dimensions');
-        const calculateBtn = document.getElementById('calculateBtn');
-        const form = document.getElementById('areaForm');
-        const resultDiv = document.getElementById('result');
+// If your function requires authentication, add the function key:
+// const FUNCTION_KEY = 'your-function-key-here';
+// Then include it in the headers or as a query parameter
 
-        const inputs = {
-            radius: document.getElementById('radius'),
-            length: document.getElementById('length'),
-            width: document.getElementById('width'),
-            base: document.getElementById('base'),
-            height: document.getElementById('height'),
-            side: document.getElementById('side')
-        };
+const shapeSelect = document.getElementById('shape');
+const dimensionsDiv = document.getElementById('dimensions');
+const calculateBtn = document.getElementById('calculateBtn');
+const form = document.getElementById('areaForm');
+const resultDiv = document.getElementById('result');
 
-        const shapeFields = {
-            circle: ['radius'],
-            rectangle: ['length', 'width'],
-            triangle: ['base', 'height'],
-            square: ['side']
-        };
+const inputs = {
+    radius: document.getElementById('radius'),
+    length: document.getElementById('length'),
+    width: document.getElementById('width'),
+    base: document.getElementById('base'),
+    height: document.getElementById('height'),
+    side: document.getElementById('side')
+};
 
-        // Show/hide fields based on shape selection
-        shapeSelect.addEventListener('change', function() {
-            const shape = this.value;
-            
-            // Hide all input groups
-            Object.values(inputs).forEach(input => {
-                input.closest('.form-group').classList.add('hidden');
-                input.required = false;
-            });
+const shapeFields = {
+    circle: ['radius'],
+    rectangle: ['length', 'width'],
+    triangle: ['base', 'height'],
+    square: ['side']
+};
 
-            if (shape) {
-                dimensionsDiv.classList.remove('hidden');
-                calculateBtn.disabled = false;
-                
-                // Show relevant fields
-                shapeFields[shape].forEach(field => {
-                    inputs[field].closest('.form-group').classList.remove('hidden');
-                    inputs[field].required = true;
-                });
-            } else {
-                dimensionsDiv.classList.add('hidden');
-                calculateBtn.disabled = true;
-            }
+// Show/hide fields based on shape selection
+shapeSelect.addEventListener('change', function() {
+    const shape = this.value;
+    
+    // Hide all input groups
+    Object.values(inputs).forEach(input => {
+        input.closest('.form-group').classList.add('hidden');
+        input.required = false;
+    });
 
-            resultDiv.className = 'result';
-            resultDiv.innerHTML = '';
+    if (shape) {
+        dimensionsDiv.classList.remove('hidden');
+        calculateBtn.disabled = false;
+        
+        // Show relevant fields
+        shapeFields[shape].forEach(field => {
+            inputs[field].closest('.form-group').classList.remove('hidden');
+            inputs[field].required = true;
+        });
+    } else {
+        dimensionsDiv.classList.add('hidden');
+        calculateBtn.disabled = true;
+    }
+
+    resultDiv.className = 'result';
+    resultDiv.innerHTML = '';
+});
+
+// Handle form submission
+form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const shape = shapeSelect.value;
+    const data = { shape };
+
+    // Collect input values
+    shapeFields[shape].forEach(field => {
+        const value = parseFloat(inputs[field].value);
+        if (isNaN(value) || value < 0) {
+            showResult('error', `Please enter a valid positive number for ${field}`);
+            return;
+        }
+        data[field] = value;
+    });
+
+    // Validate that we have all required data
+    if (Object.keys(data).length <= 1) {
+        return;
+    }
+
+    calculateBtn.disabled = true;
+    calculateBtn.textContent = 'Calculating...';
+    resultDiv.className = 'result';
+
+    try {
+        console.log('Sending request to:', FUNCTION_URL);
+        console.log('Request data:', data);
+
+        const response = await fetch(FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+                // If using function key authentication:
+                // 'x-functions-key': FUNCTION_KEY
+            },
+            body: JSON.stringify(data)
         });
 
-        // Handle form submission
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const shape = shapeSelect.value;
-            const data = { shape };
+        console.log('Response status:', response.status);
 
-            // Collect input values
-            shapeFields[shape].forEach(field => {
-                data[field] = parseFloat(inputs[field].value);
-            });
+        const result = await response.json();
+        console.log('Response data:', result);
 
-            calculateBtn.disabled = true;
-            calculateBtn.textContent = 'Calculating...';
-            resultDiv.className = 'result';
+        if (response.ok) {
+            showResult('success', `
+                <h3>✅ Calculation Complete</h3>
+                <p><strong>Shape:</strong> ${result.shape}</p>
+                <p><strong>Area:</strong> ${result.area} square units</p>
+            `);
+        } else {
+            throw new Error(result.error || result.message || 'Calculation failed');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showResult('error', `
+            <h3>❌ Error</h3>
+            <p>${error.message}</p>
+            <p><small>Check console for more details</small></p>
+        `);
+    } finally {
+        calculateBtn.disabled = false;
+        calculateBtn.textContent = 'Calculate Area';
+    }
+});
 
-            try {
-                const response = await fetch(FUNCTION_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    resultDiv.className = 'result success';
-                    resultDiv.innerHTML = `
-                        <h3>✅ Calculation Complete</h3>
-                        <p><strong>Shape:</strong> ${result.shape}</p>
-                        <p><strong>Area:</strong> ${result.area} square units</p>
-                    `;
-                } else {
-                    throw new Error(result.error || 'Calculation failed');
-                }
-            } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = `
-                    <h3>❌ Error</h3>
-                    <p>${error.message}</p>
-                `;
-            } finally {
-                calculateBtn.disabled = false;
-                calculateBtn.textContent = 'Calculate Area';
-            }
-        });
+function showResult(type, html) {
+    resultDiv.className = `result ${type}`;
+    resultDiv.innerHTML = html;
+}
     </script>
 </body>
 </html>
